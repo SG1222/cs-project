@@ -184,23 +184,29 @@ If all three pass, it returns `str(date_value)`, which is always in `YYYY-MM-DD`
 **Q44. Why is the note cut with `[:100]`?**
 The `note` column is `VARCHAR(100)`. Slicing keeps the first 100 characters, so MySQL never rejects a long note and the record is not lost.
 
-**Q45. What does `x if condition else y` mean in your code?**
+**Q45. How does `ask_yes_no()` work?**
+It upper-cases the answer with `.strip().upper()` and loops with `while True`. `Y` or `YES` returns `True`, `N` or `NO` returns `False`, and anything else prints "Please type Y for yes or N for no." and asks again. Earlier, any answer except `Y` counted as no, so typing "yes" silently cancelled a save.
+
+**Q46. Why can a new category name have at most 15 characters and a unit at most 6?**
+The tables print the name and unit in fixed-width columns using `format()`, such as `{:<15}` and `{:<6}`. A longer name pushed the other columns out of line, so `add_category()` checks `len(name) > 15 or len(unit) > 6` and rejects it. The six default names are all 12 characters or fewer.
+
+**Q47. What does `x if condition else y` mean in your code?**
 It is a short form of `if`/`else` that gives one of two values. For example, `share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0` calculates the percentage only when the total is above zero, which avoids a division by zero. `note = record[6] if record[6] else ""` shows an empty note as blank instead of `None`.
 
-**Q46. Why do you write `MONTH_NAMES[month - 1]`?**
+**Q48. Why do you write `MONTH_NAMES[month - 1]`?**
 `MONTH_NAMES` is a tuple of 12 names, and tuple indexes start at 0, so "January" is at index 0. Month numbers start at 1, so month `m` is at index `m - 1`. For example, month 9 gives `MONTH_NAMES[8]`, which is "September".
 
 ---
 
 ## 5. Stack (Undo Last Added Record)
 
-**Q47. Where did you use a stack?**
+**Q49. Where did you use a stack?**
 In menu option 14, Undo Last Added Record. The list `undo_stack` stores the ID of every record added in this session. Option 14 removes the most recently added record first.
 
-**Q48. What is a stack? Why is it the right choice for undo?**
+**Q50. What is a stack? Why is it the right choice for undo?**
 A stack is a LIFO (Last In, First Out) structure: the last item put in is the first one taken out. Undo must always remove the newest action first, then the one before it, which is exactly LIFO.
 
-**Q49. How did you implement the stack?**
+**Q51. How did you implement the stack?**
 With a Python list and two functions:
 ```python
 def push(stack, item):
@@ -213,48 +219,48 @@ def pop(stack):
 ```
 `add_record()` calls `push(undo_stack, cursor.lastrowid)` after saving. `undo_last_record()` calls `pop(undo_stack)`.
 
-**Q50. What happens if the stack is empty?**
+**Q52. What happens if the stack is empty?**
 `pop()` checks `len(stack) == 0` and returns `None`, so the program shows "Nothing to undo" instead of crashing. Calling `list.pop()` on an empty list would raise an `IndexError`. This situation is called stack underflow.
 
-**Q51. What if the user says N at the confirmation?**
+**Q53. What if the user says N at the confirmation?**
 The ID is pushed back onto the stack, so the record can still be undone later.
 
-**Q52. What if the record was already deleted with option 5?**
+**Q54. What if the record was already deleted with option 5?**
 `get_record()` returns `None`, so the program shows "Record … was already deleted" and nothing else happens.
 
-**Q53. Why is `global` not needed for `undo_stack`?**
+**Q55. Why is `global` not needed for `undo_stack`?**
 The functions only change the list's contents with `append()` and `pop()`; they never assign a new value to the name `undo_stack`. `global` is needed only when a function assigns to a global name, as `connect_database()` does with `connection` and `cursor`.
 
-**Q54. Does undo work after restarting the program?**
+**Q56. Does undo work after restarting the program?**
 No. The stack is an ordinary list in memory, so it starts empty each time the program runs. Undo is meant for mistakes made in the current session; older records can still be removed with option 5, Delete Record.
 
 ---
 
 ## 6. File handling
 
-**Q55. How do you export to CSV?**
+**Q57. How do you export to CSV?**
 `export_to_csv()` opens `carbon_records.csv` in write mode with a `with` statement, creates a `csv.writer`, writes the headings with `writerow()`, and writes all records at once with `writerows()`.
 
-**Q56. Why `newline=""` when opening the CSV file?**
+**Q58. Why `newline=""` when opening the CSV file?**
 Without it, Windows adds an extra blank line between rows in the CSV file.
 
-**Q57. Why `encoding="utf-8"`?**
+**Q59. Why `encoding="utf-8"`?**
 So symbols like ₹ and Hindi text in notes can be written to the file. Otherwise Windows may raise an error.
 
-**Q58. Difference between the two export functions?**
+**Q60. Difference between the two export functions?**
 `export_to_csv()` uses the `csv` module and a `with` clause, which closes the file automatically. `export_summary_to_text()` uses normal text-file handling with `open()`, `write()` and `close()` inside `try`/`finally`. Together they show both ways of working with files.
 
-**Q59. What does mode `"w"` do?**
+**Q61. What does mode `"w"` do?**
 It creates the file, or empties it if it already exists, before writing. So each export replaces the old file with fresh data.
 
 ---
 
 ## 7. Suggestions and limitations
 
-**Q60. How are suggestions generated?**
+**Q62. How are suggestions generated?**
 They are rule-based. `generate_suggestions()` works out each category's share of the total CO2. If a category is 20% or more of the total, it shows the fixed tip for that category from the `SUGGESTIONS` dictionary. No AI or internet is used.
 
-**Q61. What are the limitations of your project?**
+**Q63. What are the limitations of your project?**
 - Emission factors are illustrative, not official.
 - It is for a single user and has no login.
 - It runs in the terminal only, with no graphical interface.
@@ -263,7 +269,7 @@ They are rule-based. `generate_suggestions()` works out each category's share of
 - Quantities and emission factors are limited to 100000.
 - On servers older than MySQL 8 (default character set `latin1`), notes can contain English letters only.
 
-**Q62. How could the project be improved?**
+**Q64. How could the project be improved?**
 Add charts of monthly emissions, set monthly targets, support several users, use official factors from a government source, or build a graphical interface.
 
 ---

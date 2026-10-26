@@ -161,9 +161,16 @@ def get_date(prompt):
             return valid_date
 
 
+# Ask a yes/no question until the user answers Y/YES or N/NO
 def ask_yes_no(prompt):
-    answer = input(prompt + " (Y/N): ").strip().upper()
-    return answer == "Y"
+    while True:
+        answer = input(prompt + " (Y/N): ").strip().upper()
+        if answer == "Y" or answer == "YES":
+            return True
+        elif answer == "N" or answer == "NO":
+            return False
+        else:
+            print("Please type Y for yes or N for no.")
 
 
 # ---------------- Categories ----------------
@@ -652,8 +659,9 @@ def add_category():
     if name == "" or unit == "":
         print("Name and unit cannot be empty.")
         return
-    if len(name) > 30 or len(unit) > 10:
-        print("Name can have at most 30 characters and unit at most 10.")
+    # These limits keep the category tables neatly lined up
+    if len(name) > 15 or len(unit) > 6:
+        print("Name can have at most 15 characters and unit at most 6.")
         return
     factor = get_positive_number("Enter emission factor (kg CO2 per " + unit + "): ")
     try:

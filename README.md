@@ -355,7 +355,8 @@ Options 3 and 12 open a sub-menu. Each sub-menu pauses after each action. Thus `
 | `get_date()` | Dates that do not exist, dates in the wrong format, dates before the year 2000 and dates after today. It asks again. |
 | `choose_category()` | A category ID that does not exist. It asks again. |
 | `add_record()`, `update_record()` | A note longer than 100 characters. `[:100]` keeps the first 100 characters, because the column is VARCHAR(100). |
-| `add_category()` | An empty name or unit. A name longer than 30 characters. A unit longer than 10 characters. |
+| `add_category()` | An empty name or unit. A name longer than 15 characters. A unit longer than 6 characters. These limits keep the tables lined up. |
+| `ask_yes_no()` | An answer that is not Y, YES, N or NO. It shows "Please type Y for yes or N for no." and asks again. Small letters are also correct. |
 | `add_category()` | A name that already exists. MySQL raises `IntegrityError` because the column is UNIQUE. |
 
 > **Note:** MySQL compares text without regard to capital letters. Thus "cng car" and "CNG Car" are the same name. The second one gives "A category with this name already exists."
