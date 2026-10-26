@@ -91,8 +91,8 @@ DML (works with data): `INSERT`, `SELECT`, `UPDATE`, `DELETE`.
 **Q22. What does `IF NOT EXISTS` do?**
 It creates the database or table only if it isn't already there. That's why the program can be run many times without errors.
 
-**Q23. Why is the database created with `CHARACTER SET utf8mb4`?**
-A character set decides which characters MySQL can store. Older servers such as MySQL 5.7 default to `latin1`, which only holds English letters, so a note like "₹500 बिजली bill" is rejected with "Incorrect string value" and the record is not saved. `utf8mb4` can store text in any language, and both tables inherit it from the database. Because of `IF NOT EXISTS`, an old `latin1` database is not changed automatically; it has to be dropped and created again.
+**Q23. Can notes contain the rupee sign (₹) or Hindi text?**
+Yes on MySQL 8, whose default character set `utf8mb4` stores text in any language. Older servers such as MySQL 5.7 default to `latin1`, which only holds English letters, so MySQL rejects such a note with "Incorrect string value"; the program shows the error and carries on. The program doesn't set the character set itself, because `CHARACTER SET` is not in the syllabus, so the project recommends MySQL 8.
 
 ---
 
@@ -156,6 +156,7 @@ Each function does one job, such as `add_record()`, `search_by_date()` or `expor
 **Q38. Where did you use `try`/`except`/`finally`?**
 - `get_integer()` and `get_positive_number()`: catch `ValueError` when the user types letters
 - `validate_date()`: catches `ValueError` for impossible dates such as 2026-13-45
+- `search_menu()` and `manage_emission_factors()`: catch `mysql.connector.Error`, so a database error keeps you in the sub-menu
 - `main()`: catches `mysql.connector.Error` (wrong password, server not running), and `KeyboardInterrupt` (Ctrl+C) together with `EOFError` (Ctrl+D on macOS/Linux, or Ctrl+Z then Enter on Windows, which end the input); its `finally` always closes the cursor and connection
 - `add_category()`: catches `IntegrityError` for a duplicate category name
 - `export_summary_to_text()`: catches `IOError`; its `finally` always closes the file
@@ -175,28 +176,31 @@ Code in `finally` runs whether or not an error happened. It is used to close fil
 If all three pass, it returns `str(date_value)`, which is always in `YYYY-MM-DD` form. Adding, updating and searching all use this function, so the same rules apply everywhere.
 
 **Q42. How do you stop negative or text quantities?**
-`get_positive_number()` keeps asking in a `while True` loop. `float()` raises `ValueError` for text, and an `if` rejects values that are 0 or less with "The value must be greater than zero." The message says "value" because the same function also reads emission factors in menu 12.
+`get_positive_number()` keeps asking in a `while True` loop. `float()` raises `ValueError` for text, and `if value > 0 and value <= MAX_VALUE` accepts only numbers above 0 and up to 100000; anything else gets "The value must be greater than 0 and at most 100000". The message says "value" because the same function also reads emission factors in menu 12.
 
-**Q43. Why is the note cut with `[:100]`?**
+**Q43. Why is there an upper limit, `MAX_VALUE = 100000`?**
+`float()` also accepts `inf` (infinity), `nan` ("not a number") and huge numbers like `1e39`, which MySQL cannot store in a `FLOAT` column. The upper limit rejects `inf` and huge numbers. It also rejects `nan`, because any comparison with `nan` is `False`, so `value > 0` fails. 100000 is far above any real daily quantity.
+
+**Q44. Why is the note cut with `[:100]`?**
 The `note` column is `VARCHAR(100)`. Slicing keeps the first 100 characters, so MySQL never rejects a long note and the record is not lost.
 
-**Q44. What does `x if condition else y` mean in your code?**
+**Q45. What does `x if condition else y` mean in your code?**
 It is a short form of `if`/`else` that gives one of two values. For example, `share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0` calculates the percentage only when the total is above zero, which avoids a division by zero. `note = record[6] if record[6] else ""` shows an empty note as blank instead of `None`.
 
-**Q45. Why do you write `MONTH_NAMES[month - 1]`?**
+**Q46. Why do you write `MONTH_NAMES[month - 1]`?**
 `MONTH_NAMES` is a tuple of 12 names, and tuple indexes start at 0, so "January" is at index 0. Month numbers start at 1, so month `m` is at index `m - 1`. For example, month 9 gives `MONTH_NAMES[8]`, which is "September".
 
 ---
 
 ## 5. Stack (Undo Last Added Record)
 
-**Q46. Where did you use a stack?**
+**Q47. Where did you use a stack?**
 In menu option 14, Undo Last Added Record. The list `undo_stack` stores the ID of every record added in this session. Option 14 removes the most recently added record first.
 
-**Q47. What is a stack? Why is it the right choice for undo?**
+**Q48. What is a stack? Why is it the right choice for undo?**
 A stack is a LIFO (Last In, First Out) structure: the last item put in is the first one taken out. Undo must always remove the newest action first, then the one before it, which is exactly LIFO.
 
-**Q48. How did you implement the stack?**
+**Q49. How did you implement the stack?**
 With a Python list and two functions:
 ```python
 def push(stack, item):
@@ -209,56 +213,57 @@ def pop(stack):
 ```
 `add_record()` calls `push(undo_stack, cursor.lastrowid)` after saving. `undo_last_record()` calls `pop(undo_stack)`.
 
-**Q49. What happens if the stack is empty?**
+**Q50. What happens if the stack is empty?**
 `pop()` checks `len(stack) == 0` and returns `None`, so the program shows "Nothing to undo" instead of crashing. Calling `list.pop()` on an empty list would raise an `IndexError`. This situation is called stack underflow.
 
-**Q50. What if the user says N at the confirmation?**
+**Q51. What if the user says N at the confirmation?**
 The ID is pushed back onto the stack, so the record can still be undone later.
 
-**Q51. What if the record was already deleted with option 5?**
+**Q52. What if the record was already deleted with option 5?**
 `get_record()` returns `None`, so the program shows "Record … was already deleted" and nothing else happens.
 
-**Q52. Why is `global` not needed for `undo_stack`?**
+**Q53. Why is `global` not needed for `undo_stack`?**
 The functions only change the list's contents with `append()` and `pop()`; they never assign a new value to the name `undo_stack`. `global` is needed only when a function assigns to a global name, as `connect_database()` does with `connection` and `cursor`.
 
-**Q53. Does undo work after restarting the program?**
+**Q54. Does undo work after restarting the program?**
 No. The stack is an ordinary list in memory, so it starts empty each time the program runs. Undo is meant for mistakes made in the current session; older records can still be removed with option 5, Delete Record.
 
 ---
 
 ## 6. File handling
 
-**Q54. How do you export to CSV?**
+**Q55. How do you export to CSV?**
 `export_to_csv()` opens `carbon_records.csv` in write mode with a `with` statement, creates a `csv.writer`, writes the headings with `writerow()`, and writes all records at once with `writerows()`.
 
-**Q55. Why `newline=""` when opening the CSV file?**
+**Q56. Why `newline=""` when opening the CSV file?**
 Without it, Windows adds an extra blank line between rows in the CSV file.
 
-**Q56. Why `encoding="utf-8"`?**
+**Q57. Why `encoding="utf-8"`?**
 So symbols like ₹ and Hindi text in notes can be written to the file. Otherwise Windows may raise an error.
 
-**Q57. Difference between the two export functions?**
+**Q58. Difference between the two export functions?**
 `export_to_csv()` uses the `csv` module and a `with` clause, which closes the file automatically. `export_summary_to_text()` uses normal text-file handling with `open()`, `write()` and `close()` inside `try`/`finally`. Together they show both ways of working with files.
 
-**Q58. What does mode `"w"` do?**
+**Q59. What does mode `"w"` do?**
 It creates the file, or empties it if it already exists, before writing. So each export replaces the old file with fresh data.
 
 ---
 
 ## 7. Suggestions and limitations
 
-**Q59. How are suggestions generated?**
+**Q60. How are suggestions generated?**
 They are rule-based. `generate_suggestions()` works out each category's share of the total CO2. If a category is 20% or more of the total, it shows the fixed tip for that category from the `SUGGESTIONS` dictionary. No AI or internet is used.
 
-**Q60. What are the limitations of your project?**
+**Q61. What are the limitations of your project?**
 - Emission factors are illustrative, not official.
 - It is for a single user and has no login.
 - It runs in the terminal only, with no graphical interface.
 - Changing a factor does not recalculate old records (this is deliberate).
 - Undo works only for records added in the current session.
-- Typing `nan` or `inf` as a quantity is accepted by `float()`, and MySQL then rejects it with a database error. The program shows the error and returns to the menu; it does not crash.
+- Quantities and emission factors are limited to 100000.
+- On servers older than MySQL 8 (default character set `latin1`), notes can contain English letters only.
 
-**Q61. How could the project be improved?**
+**Q62. How could the project be improved?**
 Add charts of monthly emissions, set monthly targets, support several users, use official factors from a government source, or build a graphical interface.
 
 ---

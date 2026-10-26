@@ -46,7 +46,7 @@ All project files are in the folder `CarbonDataLogger/`.
 ## 4. Requirements
 
 - Python 3
-- A MySQL server (MySQL 8 or MariaDB)
+- A MySQL server: MySQL 8 is recommended (see 10.22). MariaDB also works.
 - The Python package `mysql-connector-python`
 
 The modules `csv` and `datetime` are part of Python. You do not install them.
@@ -228,10 +228,9 @@ The comma in `(record_id,)` makes a tuple with one item.
 
 ### 10.4 Why `"USE " + DB_NAME` joins strings
 
-`connect_database()` uses `"CREATE DATABASE IF NOT EXISTS " + DB_NAME + " CHARACTER SET utf8mb4"` and `"USE " + DB_NAME`.
+`connect_database()` uses `"CREATE DATABASE IF NOT EXISTS " + DB_NAME` and `"USE " + DB_NAME`.
 A placeholder can hold a value. It cannot hold the name of a database or table.
 `DB_NAME` is a constant in the code. The user does not type it. Thus the join is safe.
-Section 10.22 explains `CHARACTER SET utf8mb4`.
 
 ### 10.5 Tuple indexes in rows
 
@@ -343,7 +342,7 @@ Options 3 and 12 open a sub-menu. Each sub-menu pauses after each action. Thus `
 ### 10.15 Three layers of error handling in `main()`
 
 1. **Startup:** `try` / `except mysql.connector.Error`. If the connection fails, the program shows the cause and stops.
-2. **Each menu action:** `try` / `except mysql.connector.Error`. A database error shows a message. The program then shows the menu again. It does not stop.
+2. **Each menu action:** `try` / `except mysql.connector.Error`. A database error shows a message. The program then shows the menu again. It does not stop. The two sub-menus (options 3 and 12) have the same `try` / `except`. Thus after a database error, the program stays in the sub-menu.
 3. **The full loop:** `try` / `except (KeyboardInterrupt, EOFError)` / `finally`. Ctrl+C gives `KeyboardInterrupt`. Ctrl+D (macOS, Linux) or Ctrl+Z and then Enter (Windows) ends the input and gives `EOFError`. Both show "Program stopped by the user." The `finally` block always closes the cursor and the connection.
 
 ### 10.16 Input checks
@@ -351,7 +350,8 @@ Options 3 and 12 open a sub-menu. Each sub-menu pauses after each action. Thus `
 | Function | What it stops |
 |---|---|
 | `get_integer()` | Text where a whole number is necessary. It catches `ValueError` and asks again. |
-| `get_positive_number()` | Text, zero and negative numbers. It shows "The value must be greater than zero." and asks again. It is used for quantities and for emission factors. |
+| `get_positive_number()` | Text, zero, negative numbers and numbers above `MAX_VALUE` (100000). It shows "The value must be greater than 0 and at most 100000" and asks again. It is used for quantities and for emission factors. |
+| `update_record()` | A new quantity that is not a number, is 0 or less, or is above `MAX_VALUE`. It keeps the old quantity. |
 | `get_date()` | Dates that do not exist, dates in the wrong format, dates before the year 2000 and dates after today. It asks again. |
 | `choose_category()` | A category ID that does not exist. It asks again. |
 | `add_record()`, `update_record()` | A note longer than 100 characters. `[:100]` keeps the first 100 characters, because the column is VARCHAR(100). |
@@ -443,21 +443,29 @@ else:
     share = 0
 ```
 
-### 10.22 The character set `utf8mb4`
+### 10.22 Number limits and character set
 
-A character set tells MySQL how to keep text. Some older MySQL servers, for example MySQL 5.7, use the character set `latin1` by default.
-`latin1` can keep English letters only. It cannot keep the rupee sign (₹) or Hindi text.
-If the database uses `latin1`, MySQL rejects such a note with the error "Incorrect string value". The record is not saved.
+**The upper limit `MAX_VALUE`**
 
-Thus the program and the SQL script make the database with `CHARACTER SET utf8mb4`:
+`float()` accepts some text that is not a usable number: `nan` ("not a number"), `inf` (infinity) and very large numbers such as `1e39`.
+MySQL cannot keep these values in a `FLOAT` column. Thus the program checks every quantity and emission factor with one condition:
 
-```sql
-CREATE DATABASE IF NOT EXISTS carbon_logger CHARACTER SET utf8mb4;
+```python
+if value > 0 and value <= MAX_VALUE:
 ```
 
-`utf8mb4` can keep the text of all languages. The two tables use the character set of the database.
+`MAX_VALUE` is 100000. The condition stops zero, negative numbers, `inf` and numbers that are too large.
+It also stops `nan`, because every comparison with `nan` gives `False`.
 
-> **Caution:** `CREATE DATABASE IF NOT EXISTS` does not change a database that exists. If you made the database with an older version of this project, type `DROP DATABASE carbon_logger;` in the MySQL client. Then start the program again, or run the SQL script again.
+**The character set**
+
+A character set tells MySQL how to keep text. MySQL 8 uses the character set `utf8mb4` by default. `utf8mb4` can keep the rupee sign (₹) and Hindi text.
+Some older servers, for example MySQL 5.7, use `latin1` by default. `latin1` can keep English letters only.
+On such a server, MySQL rejects a note with ₹ or Hindi text with the error "Incorrect string value". The record is not saved. The program shows the error and does not stop.
+
+The program does not set the character set itself, because the syllabus does not include it. Thus:
+- Use MySQL 8 for this project.
+- On an older server, type notes in English letters only.
 
 ---
 
@@ -465,7 +473,7 @@ CREATE DATABASE IF NOT EXISTS carbon_logger CHARACTER SET utf8mb4;
 
 | Concept | Where |
 |---|---|
-| CREATE DATABASE (with CHARACTER SET utf8mb4), CREATE TABLE | `connect_database()`, `create_tables()`, `database_setup.sql` |
+| CREATE DATABASE, CREATE TABLE | `connect_database()`, `create_tables()`, `database_setup.sql` |
 | PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE | `create_tables()` |
 | INSERT | `insert_default_categories()`, `add_record()`, `add_category()` |
 | SELECT with WHERE | `get_record()`, `get_category()`, the search functions |
@@ -489,7 +497,8 @@ CREATE DATABASE IF NOT EXISTS carbon_logger CHARACTER SET utf8mb4;
 | "Could not connect to MySQL: ... Access denied" | The password is wrong. | Change `DB_PASSWORD` in `carbon_logger.py`. |
 | "Could not connect to MySQL: ... Can't connect" | The MySQL server is not running. | Start the MySQL server. |
 | "Duplicate entry" when you run the SQL script | The database already has the categories. | Type `DROP DATABASE carbon_logger;`. Then run the script again. |
-| "Database error: ... Incorrect string value" when you save a note with ₹ or Hindi text | The database uses an old character set (`latin1`). | Type `DROP DATABASE carbon_logger;`. Then start the program again, or run the SQL script again (see 10.22). |
+| "Database error: ... Incorrect string value" when you save a note with ₹ or Hindi text | The MySQL server uses an old character set (`latin1`). | Use MySQL 8, or type the note in English letters only (see 10.22). |
+| "The value must be greater than 0 and at most 100000" | The number is too large, or it is not a usable number. | Type a number from above 0 up to 100000. |
 | "Invalid date!" for a date that looks correct | The date is before the year 2000 or after today. | Type a date from 2000 up to today, or push Enter for today. |
 | "Error: could not write to carbon_records.csv" | Another program, for example Excel, has the file open. | Close the file in the other program. Then export again. |
 
@@ -502,6 +511,7 @@ CREATE DATABASE IF NOT EXISTS carbon_logger CHARACTER SET utf8mb4;
 - The program uses the terminal only. It has no graphical interface.
 - A changed emission factor does not change old records (see 10.11).
 - Undo (option 14) works only for records added since the program started (see 10.19).
-- If you type `nan` or `inf` as a quantity, the program shows a database error. It does not stop.
+- Quantities and emission factors must be 100000 or less (see 10.22).
+- On a MySQL server older than MySQL 8, notes can contain English letters only (see 10.22).
 
 Please note, this is just a small project, data produced may be inaccurate.

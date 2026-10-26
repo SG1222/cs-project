@@ -17,6 +17,9 @@ DB_USER = "root"
 DB_PASSWORD = "root"
 DB_NAME = "carbon_logger"
 
+# Largest quantity or emission factor that the program accepts
+MAX_VALUE = 100000
+
 # Output file names
 CSV_FILE = "carbon_records.csv"
 SUMMARY_FILE = "carbon_summary.txt"
@@ -64,8 +67,7 @@ def connect_database():
     global connection, cursor
     connection = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD)
     cursor = connection.cursor()
-    # utf8mb4 lets notes contain symbols such as the rupee sign and Hindi text
-    cursor.execute("CREATE DATABASE IF NOT EXISTS " + DB_NAME + " CHARACTER SET utf8mb4")
+    cursor.execute("CREATE DATABASE IF NOT EXISTS " + DB_NAME)
     cursor.execute("USE " + DB_NAME)
 
 
@@ -121,15 +123,15 @@ def get_integer(prompt):
             print("Invalid input! Please enter a whole number.")
 
 
-# Keep asking until the user types a number greater than zero
+# Keep asking until the user types a number above zero and not above MAX_VALUE
 def get_positive_number(prompt):
     while True:
         try:
             value = float(input(prompt))
-            if value <= 0:
-                print("The value must be greater than zero.")
-            else:
+            # nan fails both comparisons and inf fails the second, so both are rejected
+            if value > 0 and value <= MAX_VALUE:
                 return value
+            print("The value must be greater than 0 and at most", MAX_VALUE)
         except ValueError:
             print("Invalid input! Please enter a numeric value.")
 
@@ -307,18 +309,22 @@ def search_menu():
         print("4. Search between two dates")
         print("5. Return to Main Menu")
         choice = input("\nEnter your choice: ").strip()
-        if choice == "1":
-            search_by_id()
-        elif choice == "2":
-            search_by_category()
-        elif choice == "3":
-            search_by_date()
-        elif choice == "4":
-            search_by_date_range()
-        elif choice == "5":
-            return
-        else:
-            print("Invalid choice! Please enter 1 to 5.")
+        try:
+            if choice == "1":
+                search_by_id()
+            elif choice == "2":
+                search_by_category()
+            elif choice == "3":
+                search_by_date()
+            elif choice == "4":
+                search_by_date_range()
+            elif choice == "5":
+                return
+            else:
+                print("Invalid choice! Please enter 1 to 5.")
+        except mysql.connector.Error as error:
+            # Stay in this menu after a database error
+            print("Database error:", error)
         pause_program()
 
 
@@ -357,10 +363,11 @@ def update_record():
     quantity_text = input("New quantity: ").strip()
     if quantity_text != "":
         try:
-            if float(quantity_text) > 0:
-                quantity = float(quantity_text)
+            new_quantity = float(quantity_text)
+            if new_quantity > 0 and new_quantity <= MAX_VALUE:
+                quantity = new_quantity
             else:
-                print("Quantity must be positive, keeping the old quantity.")
+                print("Quantity must be greater than 0 and at most", MAX_VALUE, "- keeping the old quantity.")
         except ValueError:
             print("Not a number, keeping the old quantity.")
 
@@ -667,16 +674,20 @@ def manage_emission_factors():
         print("3. Add a New Category")
         print("4. Return to Main Menu")
         choice = input("\nEnter your choice: ").strip()
-        if choice == "1":
-            display_categories()
-        elif choice == "2":
-            update_emission_factor()
-        elif choice == "3":
-            add_category()
-        elif choice == "4":
-            return
-        else:
-            print("Invalid choice! Please enter 1 to 4.")
+        try:
+            if choice == "1":
+                display_categories()
+            elif choice == "2":
+                update_emission_factor()
+            elif choice == "3":
+                add_category()
+            elif choice == "4":
+                return
+            else:
+                print("Invalid choice! Please enter 1 to 4.")
+        except mysql.connector.Error as error:
+            # Stay in this menu after a database error
+            print("Database error:", error)
         pause_program()
 
 
