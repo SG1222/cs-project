@@ -86,7 +86,6 @@ def create_tables():
                         co2_emission FLOAT NOT NULL,
                         note VARCHAR(100),
                         FOREIGN KEY (category_id) REFERENCES categories(category_id))""")
-    connection.commit()
 
 
 # Insert the default categories only when the table is empty
@@ -175,7 +174,7 @@ def ask_yes_no(prompt):
 
 # ---------------- Categories ----------------
 
-# Display all categories in a table and return them as a list
+# Display all categories in a table
 def display_categories():
     cursor.execute("SELECT category_id, category_name, unit, emission_factor "
                    "FROM categories ORDER BY category_id")
@@ -185,7 +184,6 @@ def display_categories():
     for category in categories:
         print("{:<5}{:<16}{:<8}{:>22.3f}".format(category[0], category[1],
                                                  category[2], category[3]))
-    return categories
 
 
 # Fetch one category (id, name, unit, factor) from MySQL, or None
@@ -211,7 +209,7 @@ def choose_category():
 
 # Calculate carbon emission: CO2 = quantity x emission factor
 def calculate_emission(quantity, emission_factor):
-    return round(float(quantity) * float(emission_factor), 2)
+    return round(quantity * emission_factor, 2)
 
 
 # ---------------- Add and view records ----------------
@@ -468,7 +466,7 @@ def get_category_totals():
 def get_grand_total(category_totals):
     grand_total = 0
     for row in category_totals:
-        grand_total = grand_total + float(row[2])
+        grand_total = grand_total + row[2]
     return grand_total
 
 
@@ -499,7 +497,7 @@ def category_summary():
     print("{:<18}{:>10}{:>16}{:>12}".format("CATEGORY", "RECORDS", "TOTAL CO2", "SHARE"))
     print("-" * 56)
     for row in rows:
-        share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0
+        share = row[2] / grand_total * 100 if grand_total > 0 else 0
         print("{:<18}{:>10}{:>16.2f}{:>11.1f}%".format(row[0], row[1], row[2], share))
     print("-" * 56)
     print("{:<18}{:>10}{:>16.2f}".format("TOTAL", "", grand_total))
@@ -555,7 +553,7 @@ def generate_suggestions(category_totals):
     grand_total = get_grand_total(category_totals)
     for row in category_totals:
         name = row[0]
-        share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0
+        share = row[2] / grand_total * 100 if grand_total > 0 else 0
         # Suggest only for categories contributing at least 20% of the total
         if share >= 20:
             if name in SUGGESTIONS:

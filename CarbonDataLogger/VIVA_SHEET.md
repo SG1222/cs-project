@@ -191,7 +191,7 @@ It upper-cases the answer with `.strip().upper()` and loops with `while True`. `
 The tables print the name and unit in fixed-width columns using `format()`, such as `{:<15}` and `{:<6}`. A longer name pushed the other columns out of line, so `add_category()` checks `len(name) > 15 or len(unit) > 6` and rejects it. The six default names are all 12 characters or fewer.
 
 **Q47. What does `x if condition else y` mean in your code?**
-It is a short form of `if`/`else` that gives one of two values. For example, `share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0` calculates the percentage only when the total is above zero, which avoids a division by zero. `note = record[6] if record[6] else ""` shows an empty note as blank instead of `None`.
+It is a short form of `if`/`else` that gives one of two values. For example, `share = row[2] / grand_total * 100 if grand_total > 0 else 0` calculates the percentage only when the total is above zero, which avoids a division by zero. `note = record[6] if record[6] else ""` shows an empty note as blank instead of `None`.
 
 **Q48. Why do you write `MONTH_NAMES[month - 1]`?**
 `MONTH_NAMES` is a tuple of 12 names, and tuple indexes start at 0, so "January" is at index 0. Month numbers start at 1, so month `m` is at index `m - 1`. For example, month 9 gives `MONTH_NAMES[8]`, which is "September".

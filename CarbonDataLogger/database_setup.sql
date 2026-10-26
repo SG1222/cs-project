@@ -45,14 +45,3 @@ INSERT INTO emission_records (record_date, category_id, quantity, co2_emission, 
     ('2026-08-05', 3, 15.00,  1.50, 'School bus'),
     ('2026-09-01', 5,  2.00,  5.96, 'Cooking gas'),
     ('2026-09-10', 6, 800.00, 120.00, 'Flight to Mumbai');
-
--- Useful queries for checking the data
-SELECT * FROM categories;
-
-SELECT r.record_id, r.record_date, c.category_name, r.quantity, c.unit, r.co2_emission
-FROM emission_records r INNER JOIN categories c ON r.category_id = c.category_id
-ORDER BY r.record_date;
-
-SELECT c.category_name, COUNT(*), SUM(r.co2_emission)
-FROM emission_records r INNER JOIN categories c ON r.category_id = c.category_id
-GROUP BY c.category_name;

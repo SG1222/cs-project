@@ -287,7 +287,7 @@ MySQL returns a `DATE` column as a Python `date` object, not a string. The code 
 
 ### 10.9 Numbers, rounding and formatting
 
-`calculate_emission()` uses `float()` on both values. This makes sure that both values are numbers before the multiplication.
+`calculate_emission()` multiplies the quantity by the emission factor. Both are already Python `float` values: `get_positive_number()` gives a `float`, and MySQL gives a `FLOAT` column as a `float`.
 It uses `round(..., 2)` to keep two decimal places.
 
 A FLOAT column can give a value like `143.11000156402588` after `SUM()`.
@@ -429,7 +429,7 @@ The code uses this short form of `if`/`else` three times. Examples:
 
 ```python
 note = record[6] if record[6] else ""
-share = float(row[2]) / grand_total * 100 if grand_total > 0 else 0
+share = row[2] / grand_total * 100 if grand_total > 0 else 0
 ```
 
 Python calculates the condition first. If the condition is true, the result is the value before `if`. If the condition is false, the result is the value after `else`.
@@ -439,7 +439,7 @@ The long form of the second line is:
 
 ```python
 if grand_total > 0:
-    share = float(row[2]) / grand_total * 100
+    share = row[2] / grand_total * 100
 else:
     share = 0
 ```
